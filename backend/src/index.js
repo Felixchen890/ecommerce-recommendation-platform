@@ -5,6 +5,8 @@ const cors = require("cors");
 const { ApolloServer } = require("@apollo/server");
 const { expressMiddleware } = require("@apollo/server/express4");
 
+const Event = require("./models/Event");
+
 const connectDB = require("./config/db");
 const Product = require("./models/Product");
 
@@ -25,6 +27,28 @@ const typeDefs = `#graphql
     products(category: String): [Product!]!
     product(id: ID!): Product
   }
+
+  type Event {
+    id: ID!
+    userId: String!
+    productId: ID!
+    eventType: String!
+    sessionId: String!
+    experimentGroup: String!
+    createdAt: String
+  }
+  
+  input TrackEventInput {
+    userId: String!
+    productId: ID!
+    eventType: String!
+    sessionId: String!
+    experimentGroup: String
+  }
+  
+  type Mutation {
+    trackEvent(input: TrackEventInput!): Event!
+  }
 `;
 
 const resolvers = {
@@ -40,6 +64,18 @@ const resolvers = {
       return Product.findById(id);
     },
   },
+  Mutation: {
+    trackEvent: async (_, { input }) => {
+        console.log("trackEvent input:", input);
+
+        const event = await Event.create(input);
+    
+        console.log("event saved:", event._id.toString());
+    
+        return event;
+    },
+  },
+  
 };
 
 async function startServer() {

@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
 
 const PRODUCTS_QUERY = gql`
   query {
@@ -16,8 +16,66 @@ const PRODUCTS_QUERY = gql`
   }
 `;
 
+const TRACK_EVENT_MUTATION = gql`
+  mutation TrackEvent($input: TrackEventInput!) {
+    trackEvent(input: $input) {
+      id
+      userId
+      productId
+      eventType
+      sessionId
+      experimentGroup
+    }
+  }
+`;
+
+const DEMO_USER_ID = "demo-user-1";
+
+function getSessionId() {
+  let sessionId = localStorage.getItem("sessionId");
+
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+  }
+
+  return sessionId;
+}
+
+function getExperimentGroup() {
+  let group = localStorage.getItem("experimentGroup");
+
+  if (!group) {
+    group = Math.random() < 0.5 ? "A" : "B";
+    localStorage.setItem("experimentGroup", group);
+  }
+
+  return group;
+}
+
 function App() {
   const { loading, error, data } = useQuery(PRODUCTS_QUERY);
+  const [trackEvent] = useMutation(TRACK_EVENT_MUTATION);
+
+  const handleProductClick = async (productId) => {
+    try {
+      await trackEvent({
+        variables: {
+          input: {
+            userId: DEMO_USER_ID,
+            productId,
+            eventType: "view_product",
+            sessionId: getSessionId(),
+            experimentGroup: getExperimentGroup(),
+          },
+        },
+      });
+
+      console.log("view_product event tracked:", productId);
+    } catch (err) {
+      console.error("Failed to track event:", err);
+    }
+  };
 
   if (loading) return <p style={{ padding: "40px" }}>Loading products...</p>;
 
@@ -34,6 +92,10 @@ function App() {
     <main style={{ padding: "40px", fontFamily: "Arial" }}>
       <h1>E-commerce Recommendation Platform</h1>
       <p>Product list loaded from MongoDB via GraphQL.</p>
+      <p>
+        Demo User: <strong>{DEMO_USER_ID}</strong> · Experiment Group:{" "}
+        <strong>{getExperimentGroup()}</strong>
+      </p>
 
       <section
         style={{
@@ -46,11 +108,13 @@ function App() {
         {data.products.map((product) => (
           <div
             key={product.id}
+            onClick={() => handleProductClick(product.id)}
             style={{
               border: "1px solid #ddd",
               borderRadius: "12px",
               padding: "16px",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              cursor: "pointer",
             }}
           >
             <img
