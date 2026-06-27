@@ -1,16 +1,25 @@
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 
-const HELLO_QUERY = gql`
+const PRODUCTS_QUERY = gql`
   query {
-    hello
+    products {
+      id
+      name
+      category
+      brand
+      price
+      imageUrl
+      popularityScore
+      tags
+    }
   }
 `;
 
 function App() {
-  const { loading, error, data } = useQuery(HELLO_QUERY);
+  const { loading, error, data } = useQuery(PRODUCTS_QUERY);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p style={{ padding: "40px" }}>Loading products...</p>;
 
   if (error) {
     return (
@@ -24,7 +33,70 @@ function App() {
   return (
     <main style={{ padding: "40px", fontFamily: "Arial" }}>
       <h1>E-commerce Recommendation Platform</h1>
-      <p>{data.hello}</p>
+      <p>Product list loaded from MongoDB via GraphQL.</p>
+
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+          gap: "20px",
+          marginTop: "30px",
+        }}
+      >
+        {data.products.map((product) => (
+          <div
+            key={product.id}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "12px",
+              padding: "16px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+          >
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              style={{
+                width: "100%",
+                height: "180px",
+                objectFit: "cover",
+                borderRadius: "8px",
+                background: "#f5f5f5",
+              }}
+            />
+
+            <h2 style={{ fontSize: "18px", marginTop: "12px" }}>
+              {product.name}
+            </h2>
+
+            <p style={{ margin: "4px 0", color: "#555" }}>
+              {product.brand} · {product.category}
+            </p>
+
+            <p style={{ fontWeight: "bold" }}>${product.price}</p>
+
+            <p style={{ fontSize: "13px", color: "#777" }}>
+              Popularity: {product.popularityScore}
+            </p>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {product.tags.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    fontSize: "12px",
+                    padding: "4px 8px",
+                    borderRadius: "999px",
+                    background: "#f0f0f0",
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
     </main>
   );
 }
