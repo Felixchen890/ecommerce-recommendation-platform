@@ -16,6 +16,21 @@ const PRODUCTS_QUERY = gql`
   }
 `;
 
+const RECOMMENDATIONS_QUERY = gql`
+  query Recommendations($userId: String!) {
+    recommendations(userId: $userId) {
+      id
+      name
+      category
+      brand
+      price
+      imageUrl
+      popularityScore
+      tags
+    }
+  }
+`;
+
 const TRACK_EVENT_MUTATION = gql`
   mutation TrackEvent($input: TrackEventInput!) {
     trackEvent(input: $input) {
@@ -55,6 +70,16 @@ function getExperimentGroup() {
 
 function App() {
   const { loading, error, data } = useQuery(PRODUCTS_QUERY);
+
+  const {
+    loading: recommendationsLoading,
+    error: recommendationsError,
+    data: recommendationsData,
+    refetch: refetchRecommendations,
+  } = useQuery(RECOMMENDATIONS_QUERY, {
+    variables: { userId: DEMO_USER_ID },
+  });
+
   const [trackEvent] = useMutation(TRACK_EVENT_MUTATION);
 
   const handleProductClick = async (productId) => {
@@ -72,6 +97,7 @@ function App() {
       });
 
       console.log("view_product event tracked:", productId);
+      refetchRecommendations();
     } catch (err) {
       console.error("Failed to track event:", err);
     }
@@ -96,6 +122,79 @@ function App() {
         Demo User: <strong>{DEMO_USER_ID}</strong> · Experiment Group:{" "}
         <strong>{getExperimentGroup()}</strong>
       </p>
+
+
+
+
+      <section style={{ marginTop: "30px" }}>
+        <h2>Recommended For You</h2>
+
+        {recommendationsLoading && <p>Loading recommendations...</p>}
+
+        {recommendationsError && (
+          <pre style={{ color: "red" }}>{recommendationsError.message}</pre>
+        )}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: "20px",
+            marginTop: "16px",
+          }}
+        >
+          {recommendationsData?.recommendations?.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => handleProductClick(product.id)}
+              style={{
+                border: "2px solid #222",
+                borderRadius: "12px",
+                padding: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                cursor: "pointer",
+              }}
+            >
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                style={{
+                  width: "100%",
+                  height: "180px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  background: "#f5f5f5",
+                }}
+              />
+
+              <h3 style={{ fontSize: "18px", marginTop: "12px" }}>
+                {product.name}
+              </h3>
+
+              <p style={{ margin: "4px 0", color: "#555" }}>
+                {product.brand} · {product.category}
+              </p>
+
+              <p style={{ fontWeight: "bold" }}>${product.price}</p>
+
+              <p style={{ fontSize: "13px", color: "#777" }}>
+                Popularity: {product.popularityScore}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <hr style={{ margin: "40px 0" }} />
+
+      <h2>All Products</h2>
+
+
+
+
+
+
+
 
       <section
         style={{

@@ -26,6 +26,7 @@ const typeDefs = `#graphql
     hello: String
     products(category: String): [Product!]!
     product(id: ID!): Product
+    recommendations(userId: String!): [Product!]!
   }
 
   type Event {
@@ -63,6 +64,70 @@ const resolvers = {
     product: async (_, { id }) => {
       return Product.findById(id);
     },
+
+    recommendations: async (_, { userId }) => {
+        const weights = {
+          view_product: 1,
+          click_recommendation: 2,
+          add_to_cart: 3,
+          purchase: 5,
+          recommendation_impression: 0,
+        };
+      
+        const events = await Event.find({});
+        const productScores = new Map();
+      
+        for (const event of events) {
+          const score = weights[event.eventType] || 0;
+      
+          if (score <= 0 || !event.productId) {
+            continue;
+          }
+      
+          const productId = event.productId.toString();
+      
+          productScores.set(
+            productId,
+            (productScores.get(productId) || 0) + score
+          );
+        }
+      
+        const rankedProductIds = [...productScores.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([productId]) => productId);
+      
+        let recommendedProducts = [];
+      
+        if (rankedProductIds.length > 0) {
+          const products = await Product.find({
+            _id: { $in: rankedProductIds },
+          });
+      
+          const productMap = new Map(
+            products.map((product) => [product._id.toString(), product])
+          );
+      
+          recommendedProducts = rankedProductIds
+            .map((id) => productMap.get(id))
+            .filter(Boolean);
+        }
+      
+        if (recommendedProducts.length < 4) {
+          const existingIds = recommendedProducts.map((product) =>
+            product._id.toString()
+          );
+      
+          const fallbackProducts = await Product.find({
+            _id: { $nin: existingIds },
+          })
+            .sort({ popularityScore: -1 })
+            .limit(4 - recommendedProducts.length);
+      
+          recommendedProducts = [...recommendedProducts, ...fallbackProducts];
+        }
+      
+        return recommendedProducts.slice(0, 4);
+      },
   },
   Mutation: {
     trackEvent: async (_, { input }) => {
