@@ -45,6 +45,26 @@ const TRACK_EVENT_MUTATION = gql`
   }
 `;
 
+const ANALYTICS_QUERY = gql`
+  query {
+    analytics {
+      groups {
+        group
+        impressions
+        clicks
+        ctr
+        views
+        addToCart
+        purchases
+      }
+    }
+  }
+`;
+
+
+
+
+
 const DEMO_USER_ID = "demo-user-1";
 
 function getSessionId() {
@@ -86,23 +106,42 @@ function App() {
 
   const [trackEvent] = useMutation(TRACK_EVENT_MUTATION);
 
+
+
+
+  const {
+    loading: analyticsLoading,
+    error: analyticsError,
+    data: analyticsData,
+    refetch: refetchAnalytics,
+  } = useQuery(ANALYTICS_QUERY);
+
+
+
+
+
+
+
+
+
+
   useEffect(() => {
     const recommendations = recommendationsData?.recommendations || [];
-  
+
     if (recommendations.length === 0) {
       return;
     }
-  
+
     const impressionKey = `impressions-${getExperimentGroup()}-${recommendations
       .map((product) => product.id)
       .join("-")}`;
-  
+
     if (sessionStorage.getItem(impressionKey)) {
       return;
     }
-  
+
     sessionStorage.setItem(impressionKey, "true");
-  
+
     recommendations.forEach((product) => {
       trackEvent({
         variables: {
@@ -133,9 +172,10 @@ function App() {
           },
         },
       });
-  
+
       console.log(`${eventType} event tracked:`, productId);
       refetchRecommendations();
+      refetchAnalytics();
     } catch (err) {
       console.error("Failed to track event:", err);
     }
@@ -160,6 +200,58 @@ function App() {
         Demo User: <strong>{DEMO_USER_ID}</strong> · Experiment Group:{" "}
         <strong>{getExperimentGroup()}</strong>
       </p>
+
+
+
+
+
+      <section style={{ marginTop: "30px" }}>
+        <h2>A/B Testing Dashboard</h2>
+
+        {analyticsLoading && <p>Loading analytics...</p>}
+
+        {analyticsError && (
+          <pre style={{ color: "red" }}>{analyticsError.message}</pre>
+        )}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "20px",
+            marginTop: "16px",
+          }}
+        >
+          {analyticsData?.analytics?.groups?.map((group) => (
+            <div
+              key={group.group}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: "12px",
+                padding: "20px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                background: "#fff",
+              }}
+            >
+              <h3>Group {group.group}</h3>
+
+              <p>
+                <strong>Strategy:</strong>{" "}
+                {group.group === "A"
+                  ? "Popularity-based recommendations"
+                  : "Personalized category/tag recommendations"}
+              </p>
+
+              <p>Impressions: {group.impressions}</p>
+              <p>Recommendation Clicks: {group.clicks}</p>
+              <p>CTR: {(group.ctr * 100).toFixed(2)}%</p>
+              <p>Product Views: {group.views}</p>
+              <p>Add to Cart: {group.addToCart}</p>
+              <p>Purchases: {group.purchases}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
 
 
