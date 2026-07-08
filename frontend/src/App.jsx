@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 
@@ -118,6 +118,10 @@ function App() {
 
 
 
+  const [cart, setCart] = useState([]);
+
+
+
 
 
 
@@ -181,6 +185,68 @@ function App() {
     }
   };
 
+  const handleAddToCart = async (productId) => {
+    setCart((prevCart) => [...prevCart, productId]);
+
+    try {
+      await trackEvent({
+        variables: {
+          input: {
+            userId: DEMO_USER_ID,
+            productId,
+            eventType: "add_to_cart",
+            sessionId: getSessionId(),
+            experimentGroup: getExperimentGroup(),
+          },
+        },
+      });
+
+      console.log("add_to_cart event tracked:", productId);
+      refetchAnalytics();
+    } catch (err) {
+      console.error("Failed to track add_to_cart event:", err);
+    }
+  };
+
+
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        cart.map((productId) =>
+          trackEvent({
+            variables: {
+              input: {
+                userId: DEMO_USER_ID,
+                productId,
+                eventType: "purchase",
+                sessionId: getSessionId(),
+                experimentGroup: getExperimentGroup(),
+              },
+            },
+          })
+        )
+      );
+
+      console.log("purchase events tracked:", cart);
+      setCart([]);
+      refetchAnalytics();
+    } catch (err) {
+      console.error("Failed to track purchase events:", err);
+    }
+  };
+
+
+
+
+
+
+
+
   if (loading) return <p style={{ padding: "40px" }}>Loading products...</p>;
 
   if (error) {
@@ -200,6 +266,40 @@ function App() {
         Demo User: <strong>{DEMO_USER_ID}</strong> · Experiment Group:{" "}
         <strong>{getExperimentGroup()}</strong>
       </p>
+
+
+
+      <div style={{ marginTop: "16px" }}>
+        <strong>Cart:</strong> {cart.length} item{cart.length !== 1 ? "s" : ""}
+
+        <button
+          onClick={handleCheckout}
+          disabled={cart.length === 0}
+          style={{
+            marginLeft: "12px",
+            padding: "8px 14px",
+            borderRadius: "8px",
+            cursor: cart.length === 0 ? "not-allowed" : "pointer",
+          }}
+        >
+          Checkout
+        </button>
+      </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -315,6 +415,21 @@ function App() {
               <p style={{ fontSize: "13px", color: "#777" }}>
                 Popularity: {product.popularityScore}
               </p>
+
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleAddToCart(product.id);
+                }}
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                Add to Cart
+              </button>
             </div>
           ))}
         </div>
@@ -376,6 +491,21 @@ function App() {
             <p style={{ fontSize: "13px", color: "#777" }}>
               Popularity: {product.popularityScore}
             </p>
+
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                handleAddToCart(product.id);
+              }}
+              style={{
+                marginTop: "8px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              Add to Cart
+            </button>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {product.tags.map((tag) => (
