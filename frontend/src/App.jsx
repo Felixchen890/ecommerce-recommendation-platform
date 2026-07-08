@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 
@@ -17,8 +18,8 @@ const PRODUCTS_QUERY = gql`
 `;
 
 const RECOMMENDATIONS_QUERY = gql`
-  query Recommendations($userId: String!) {
-    recommendations(userId: $userId) {
+  query Recommendations($userId: String!, $experimentGroup: String) {
+    recommendations(userId: $userId, experimentGroup: $experimentGroup) {
       id
       name
       category
@@ -77,26 +78,63 @@ function App() {
     data: recommendationsData,
     refetch: refetchRecommendations,
   } = useQuery(RECOMMENDATIONS_QUERY, {
-    variables: { userId: DEMO_USER_ID },
+    variables: {
+      userId: DEMO_USER_ID,
+      experimentGroup: getExperimentGroup(),
+    },
   });
 
   const [trackEvent] = useMutation(TRACK_EVENT_MUTATION);
 
-  const handleProductClick = async (productId) => {
+  useEffect(() => {
+    const recommendations = recommendationsData?.recommendations || [];
+  
+    if (recommendations.length === 0) {
+      return;
+    }
+  
+    const impressionKey = `impressions-${getExperimentGroup()}-${recommendations
+      .map((product) => product.id)
+      .join("-")}`;
+  
+    if (sessionStorage.getItem(impressionKey)) {
+      return;
+    }
+  
+    sessionStorage.setItem(impressionKey, "true");
+  
+    recommendations.forEach((product) => {
+      trackEvent({
+        variables: {
+          input: {
+            userId: DEMO_USER_ID,
+            productId: product.id,
+            eventType: "recommendation_impression",
+            sessionId: getSessionId(),
+            experimentGroup: getExperimentGroup(),
+          },
+        },
+      }).catch((err) => {
+        console.error("Failed to track recommendation impression:", err);
+      });
+    });
+  }, [recommendationsData, trackEvent]);
+
+  const handleProductClick = async (productId, eventType = "view_product") => {
     try {
       await trackEvent({
         variables: {
           input: {
             userId: DEMO_USER_ID,
             productId,
-            eventType: "view_product",
+            eventType,
             sessionId: getSessionId(),
             experimentGroup: getExperimentGroup(),
           },
         },
       });
-
-      console.log("view_product event tracked:", productId);
+  
+      console.log(`${eventType} event tracked:`, productId);
       refetchRecommendations();
     } catch (err) {
       console.error("Failed to track event:", err);
@@ -129,6 +167,11 @@ function App() {
       <section style={{ marginTop: "30px" }}>
         <h2>Recommended For You</h2>
 
+        <p style={{ color: "#666" }}>
+          Group A uses popularity-based recommendations. Group B uses personalized
+          recommendations based on user behavior, categories, and tags.
+        </p>
+
         {recommendationsLoading && <p>Loading recommendations...</p>}
 
         {recommendationsError && (
@@ -146,7 +189,7 @@ function App() {
           {recommendationsData?.recommendations?.map((product) => (
             <div
               key={product.id}
-              onClick={() => handleProductClick(product.id)}
+              onClick={() => handleProductClick(product.id, "click_recommendation")}
               style={{
                 border: "2px solid #222",
                 borderRadius: "12px",
