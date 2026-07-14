@@ -2,6 +2,9 @@
 
 A full-stack e-commerce recommendation platform built with React, Node.js, GraphQL, MongoDB, and AWS Lambda-ready architecture. The project demonstrates personalized product recommendations, user behavior tracking, A/B testing, and analytics dashboards for measuring recommendation performance.
 
+
+![A/B testing dashboard](docs/assets/ab-testing-dashboard.png)
+
 ## Project Overview
 
 This project simulates a data-driven e-commerce platform where users can browse products, receive recommendations, add items to cart, and complete a mock checkout flow. The system tracks user behavior events and uses them to power recommendation strategies and A/B testing analytics.
@@ -128,6 +131,27 @@ CTR = 8%
 ```
 
 This simulated data is used for local testing and dashboard demonstration.
+
+
+## Application Screenshots
+
+### A/B Testing Dashboard
+
+The dashboard compares the popularity-based Group A strategy with the personalized Group B strategy across recommendation impressions, clicks, CTR, product views, add-to-cart events, and purchases.
+
+![A/B testing dashboard](docs/assets/ab-testing-dashboard.png)
+
+### Personalized Recommendations
+
+The recommendation section displays products selected by the active experiment strategy. Group A uses popularity-based ranking, while Group B incorporates user behavior, categories, tags, and popularity.
+
+![Recommended products](docs/assets/recommended-products.png)
+
+### Product Catalog
+
+Products are retrieved from MongoDB through the GraphQL API and displayed with product metadata, prices, popularity scores, tags, and add-to-cart controls.
+
+![Product catalog](docs/assets/product-catalog.png)
 
 ## GraphQL API Examples
 
